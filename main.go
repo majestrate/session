@@ -2,11 +2,10 @@ package main
 
 import (
 	"github.com/majestrate/session2/lib/config"
-	"github.com/majestrate/session2/lib/cryptography"
-	"github.com/majestrate/session2/lib/swarm"
+	"github.com/majestrate/session2/lib/client"
 	_ "github.com/majestrate/session2/lib/fetcher"
 	"fmt"
-	"os"
+	"time"
 )
 
 func main() {
@@ -17,46 +16,21 @@ func main() {
 		return
 	}
 
-	sessionID := ""
+	me := client.NewClient(nil)
 	
-	if len(os.Args) <= 1 {
-		keys := cryptography.Keygen()
-		sessionID = keys.SessionID()
-	} else {
-		sessionID = os.Args[1]
-	}
+	fmt.Printf("we are %s\n", me.SessionID())
 
-	fmt.Printf("we are %s\n", sessionID)
-	
-	snodeMap := make(map[string]swarm.ServiceNode)
-	
-	swarm.WithSeedNodes(func(node swarm.ServiceNode) {
-		peers, err := node.GetSNodeList()
+	for {
+
+		me.Update()
+
+		msgs, err := me.FetchNewMessages()
 		if err != nil {
-			fmt.Printf("error fetching node list from %s: %s\n", node.SNodeAddr(), err.Error())
-			return
+			fmt.Printf("failed to get new messages: %s\n", err.Error())
 		}
-		fmt.Printf("got %d nodes from %s\n", len(peers), node.SNodeAddr())
-		for _, peer := range peers {
-			snodeMap[peer.IdentityKey] = peer
-		}
-	})
-	
-	for pk, snode := range snodeMap {
-		fmt.Printf("store at %s\n", pk)
-		where, err := snode.StoreMessage(sessionID, "bemis")
-		if err != nil {
-			fmt.Printf("error storing: %s\n", err.Error())
-			continue
-		}
-		msgs, err := where.FetchMessages(sessionID)
-		if err != nil {
-			fmt.Printf("error fetching: %s\n", err.Error())
-			return
-		}
-		fmt.Printf("got %d messages\n", len(msgs))
 		for idx, msg := range msgs {
 			fmt.Printf("%d: %q\n", idx, msg)
 		}
+		time.Sleep(5 * time.Second)
 	}
 }

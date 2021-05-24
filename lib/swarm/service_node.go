@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"bytes"
 	"fmt"
-	"encoding/hex"
+	_ "encoding/hex"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"github.com/majestrate/session2/lib/constants"
 	"github.com/majestrate/session2/lib/utils"
+	"github.com/majestrate/session2/lib/model"
 	"errors"
 )
 
@@ -88,11 +89,14 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 var zb32 = base32.NewEncoding("ybndrfg8ejkmcpqxot1uwisza345h769").WithPadding(-1)
 
 func (node *ServiceNode) SNodeAddr() string {
-	if node.IdentityKey == "" {
+	return node.RemoteIP
+	
+	/* if node.IdentityKey == "" {
 		return node.RemoteIP
 	}
 	data, _ := hex.DecodeString(node.IdentityKey)
 	return zb32.EncodeToString(data) +".snode"
+	*/
 }
 
 func (node *ServiceNode) URL(path string) *url.URL {
@@ -103,13 +107,13 @@ func (node *ServiceNode) URL(path string) *url.URL {
 	}
 }
 
-func (node *ServiceNode) StoreMessage(sessionID string, body string) (*ServiceNode, error) {
+func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*ServiceNode, error) {
 	fmt.Printf("store for %s at %s\n", sessionID, node.StorageURL())
 	request := map[string]interface{} {
 		"pubKey": sessionID,
 			"ttl": fmt.Sprintf("%d", constants.TTL),
 			"timestamp": fmt.Sprintf("%d",utils.TimeNow()),
-			"data": base64.StdEncoding.EncodeToString([]byte(body)),
+			"data": base64.StdEncoding.EncodeToString(msg.Data()),
 		}
 	result, err := node.StorageAPI("store", request)
 	if err == nil {
@@ -134,7 +138,7 @@ func (node *ServiceNode) StoreMessage(sessionID string, body string) (*ServiceNo
 				EncryptionKey: fmt.Sprintf("%s", snode["pubkey_x25519"]),
 			}
 			fmt.Printf("retry via %s\n", info.StorageURL())
-			_, err = info.StoreMessage(sessionID, body)
+			_, err = info.StoreMessage(sessionID, msg)
 			if err == nil {
 				return info, nil
 			}	
@@ -144,34 +148,40 @@ func (node *ServiceNode) StoreMessage(sessionID string, body string) (*ServiceNo
 	return nil, err
 }
 
-func (node *ServiceNode) FetchMessages(sessionID string) ([]string, error){
+func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]model.Message, error){
 	request := map[string]interface{} {
 		"pubKey": sessionID,
-			"lastHash": "",
+			"lastHash": lastHash,
 		}
 	result, err := node.StorageAPI("retrieve", request)
 	if err != nil {
 		return nil, err
 	}
-	var messages []string
+	var messages []model.Message
 	msgs, ok := result["messages"]
 	if !ok {
-		return nil, errors.New("invalid data")
+		return nil, errors.New("invalid data, no messages key")
 	}
 	list, ok := msgs.([]interface{})
 	if !ok {
-		return nil, errors.New("invalid data")
+		return nil, errors.New("invalid data, messages not a list")
 	}
 	for _, msg := range list {
 		m, ok := msg.(map[string]interface{})
 		if !ok {
-			return nil, errors.New("invalid data")
+			return nil, errors.New("invalid data, message is not a dict")
 		}
 		data, err := base64.StdEncoding.DecodeString(fmt.Sprintf("%s", m["data"]))
 		if err != nil {
 			return nil, err
 		}
-		messages = append(messages, string(data))
+		hash := fmt.Sprintf("%s", m["hash"])
+		timestamp := fmt.Sprintf("%s", m["timestamp"])
+		messages = append(messages, model.Message{
+			Raw: string(data),
+			Hash: hash,
+			Timestamp: timestamp,
+		})
 	}
 	return messages, nil
 }
@@ -200,8 +210,14 @@ func (node *ServiceNode) GetSNodeList() ([]ServiceNode, error) {
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(jsonReq)
-	
-	resp, err := http.Post(node.RPCURL().String(), "application/json", body)
+
+	client  := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: node.TLSConfig(),
+		},
+	}
+
+	resp, err := client.Post(node.RPCURL().String(), "application/json", body)
 
 	if err != nil {
 		return nil, err
