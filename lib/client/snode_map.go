@@ -2,19 +2,28 @@ package client
 
 import (
 	"fmt"
-	"time"
+	"github.com/majestrate/session/lib/constants"
+	"github.com/majestrate/session/lib/swarm"
 	"math/rand"
-	"github.com/majestrate/session2/lib/constants"
-	"github.com/majestrate/session2/lib/swarm"
+	"time"
 )
 
 type SnodeMap struct {
-	snodeMap map[string]swarm.ServiceNode
+	snodeMap     map[string]swarm.ServiceNode
 	nextUpdateAt time.Time
 }
 
+func (s *SnodeMap) All() (nodes []swarm.ServiceNode) {
+	for _, node := range s.snodeMap {
+		nodes = append(nodes, node)
+	}
+	return
+}
+
 func (s *SnodeMap) VisitSwarmFor(id string, visit func(swarm.ServiceNode)) {
-	visit(s.Random())
+	for _, snode := range swarm.GetSwarmForPubkey(s.All(), id[2:]) {
+		visit(snode)
+	}
 }
 
 func (s *SnodeMap) Random() (node swarm.ServiceNode) {
@@ -26,7 +35,7 @@ func (s *SnodeMap) Random() (node swarm.ServiceNode) {
 		if idx == 0 {
 			node = info
 		}
-		idx --
+		idx--
 	}
 	return
 }
@@ -40,15 +49,15 @@ func (s *SnodeMap) ShouldUpdate() bool {
 }
 
 func (s *SnodeMap) Update(node swarm.ServiceNode) error {
-		peers, err := node.GetSNodeList()
-		if err != nil {
-			return err
-		}
-		fmt.Printf("got %d nodes from %s\n", len(peers), node.SNodeAddr())
-		s.snodeMap = make(map[string]swarm.ServiceNode)
-		for _, peer := range peers {
-			s.snodeMap[peer.IdentityKey] = peer
-		}
+	peers, err := node.GetSNodeList()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("got %d nodes from %s\n", len(peers), node.SNodeAddr())
+	s.snodeMap = make(map[string]swarm.ServiceNode)
+	for _, peer := range peers {
+		s.snodeMap[peer.IdentityKey] = peer
+	}
 	s.nextUpdateAt = time.Now().Add(constants.SNodeMapUpdateInterval * time.Second)
 	return nil
 }

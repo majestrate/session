@@ -1,17 +1,18 @@
 package client
 
 import (
+	_ "errors"
 	"fmt"
+	"github.com/majestrate/session/lib/cryptography"
+	"github.com/majestrate/session/lib/model"
+	"github.com/majestrate/session/lib/swarm"
 	"time"
-	"github.com/majestrate/session2/lib/cryptography"
-	"github.com/majestrate/session2/lib/swarm"
-	"github.com/majestrate/session2/lib/model"
 )
 
 type Client struct {
-	keys *cryptography.KeyPair
-	snodes SnodeMap
-	store MessageStore
+	keys     *cryptography.KeyPair
+	snodes   SnodeMap
+	store    MessageStore
 	ourSwarm *swarm.ServiceNode
 }
 
@@ -20,13 +21,10 @@ func (cl *Client) SessionID() string {
 }
 
 func NewClient(keys *cryptography.KeyPair) *Client {
-	if keys == nil {
-		keys = cryptography.Keygen()
-	}
 	return &Client{
-		keys:keys,
+		keys: keys,
 		snodes: SnodeMap{
-			snodeMap: make(map[string]swarm.ServiceNode),
+			snodeMap:     make(map[string]swarm.ServiceNode),
 			nextUpdateAt: time.Now(),
 		},
 		store: MemoryStore(),
@@ -41,17 +39,21 @@ func (cl *Client) Update() {
 				fmt.Printf("Failed to fetch from seed node: %s\n", err.Error())
 			}
 		})
-		cl.withRandomSNode(func(node swarm.ServiceNode) {
-			cl.ourSwarm, _ = node.StoreMessage(cl.SessionID(), model.Message{Raw: "bemis"})
+		cl.snodes.VisitSwarmFor(cl.SessionID(), func(node swarm.ServiceNode) {
+			if cl.ourSwarm == nil {
+				cl.ourSwarm, _ = node.StoreMessage(cl.SessionID(), model.Message{Raw: "bemis"})
+			}
 		})
 	} else if cl.snodes.ShouldUpdate() {
-		cl.withRandomSNode(func(node swarm.ServiceNode) {
+		cl.snodes.VisitSwarmFor(cl.SessionID(), func(node swarm.ServiceNode) {
 			err := cl.snodes.Update(node)
 			if err != nil {
 				fmt.Printf("Failed to fetch from %s: %s\n", node.SNodeAddr(), err.Error())
 				return
 			}
-			cl.ourSwarm, err = node.StoreMessage(cl.SessionID(), model.Message{Raw: "bemis"})
+			if cl.ourSwarm == nil {
+				cl.ourSwarm, err = node.StoreMessage(cl.SessionID(), model.Message{Raw: "bemis"})
+			}
 		})
 	}
 }
@@ -78,4 +80,8 @@ func (cl *Client) FetchNewMessages() (found []model.Message, err error) {
 		}
 	}
 	return
+}
+
+func (cl *Client) DecryptMessage(msg model.Message) ([]byte, error) {
+	return msg.Decode()
 }

@@ -1,11 +1,11 @@
 package client
 
-import "github.com/majestrate/session2/lib/model"
+import "github.com/majestrate/session/lib/model"
 
 type memStore struct {
 	lastTimestamp string
-	lastHash string
-	msgs map[string]model.Message
+	lastHash      string
+	msgs          map[string]model.Message
 }
 
 func (m *memStore) HasMessage(hash string) bool {
@@ -16,7 +16,7 @@ func (m *memStore) HasMessage(hash string) bool {
 func (m *memStore) Put(msg model.Message) error {
 	m.msgs[msg.Hash] = msg
 	if m.lastTimestamp > msg.Timestamp {
-		m.lastHash =  msg.Hash
+		m.lastHash = msg.Hash
 	}
 	return nil
 }
@@ -25,7 +25,6 @@ func (m *memStore) LastHash() string {
 	return m.lastHash
 }
 
-
 func MemoryStore() MessageStore {
-	return &memStore{msgs:make(map[string]model.Message)}
+	return &memStore{msgs: make(map[string]model.Message)}
 }

@@ -1,9 +1,8 @@
 package swarm
 
-
 var seedNodes = []ServiceNode{
 	ServiceNode{
-		RemoteIP: "public.loki.foundation",
+		RemoteIP:    "public.loki.foundation",
 		StoragePort: 443,
 	},
 }

@@ -1,34 +1,34 @@
 package swarm
 
 import (
-	"strconv"
-	"crypto/tls"
-	"net"
-	"net/url"
-	"net/http"
 	"bytes"
-	"fmt"
-	_ "encoding/hex"
+	"crypto/tls"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
-	"io"
-	"github.com/majestrate/session2/lib/constants"
-	"github.com/majestrate/session2/lib/utils"
-	"github.com/majestrate/session2/lib/model"
 	"errors"
+	"fmt"
+	"github.com/majestrate/session/lib/constants"
+	"github.com/majestrate/session/lib/model"
+	"github.com/majestrate/session/lib/utils"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
 )
 
-
 type ServiceNode struct {
-	RemoteIP string `json:"public_ip"`
-	StoragePort int `json:"storage_port"`
-	IdentityKey string `json:"pubkey_ed25519"`
+	RemoteIP      string `json:"public_ip"`
+	StoragePort   int    `json:"storage_port"`
+	IdentityKey   string `json:"pubkey_ed25519"`
 	EncryptionKey string `json:"pubkey_x25519"`
+	SwarmID       uint64 `json:"swarm_id"`
 }
 
 func makeFields(keys ...string) map[string]bool {
-	val:= make(map[string]bool)
+	val := make(map[string]bool)
 	for _, key := range keys {
 		val[key] = true
 	}
@@ -50,16 +50,16 @@ func (node *ServiceNode) TLSConfig() *tls.Config {
 }
 
 func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}) (result map[string]interface{}, err error) {
-	jsonReq := map[string]interface{} {
+	jsonReq := map[string]interface{}{
 		"jsonrpc": "2.0",
-			"id": 0,
-			"method": method,
-			"params": params,
-		}
+		"id":      0,
+		"method":  method,
+		"params":  params,
+	}
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(jsonReq)
 
-	client  := http.Client{
+	client := http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: node.TLSConfig(),
 		},
@@ -76,7 +76,7 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	jsonResponse := make(map[string]interface{})
 
 	err = json.NewDecoder(responseBody).Decode(&jsonResponse)
@@ -89,32 +89,30 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 var zb32 = base32.NewEncoding("ybndrfg8ejkmcpqxot1uwisza345h769").WithPadding(-1)
 
 func (node *ServiceNode) SNodeAddr() string {
-	return node.RemoteIP
-	
-	/* if node.IdentityKey == "" {
+	if node.IdentityKey == "" {
 		return node.RemoteIP
 	}
 	data, _ := hex.DecodeString(node.IdentityKey)
-	return zb32.EncodeToString(data) +".snode"
-	*/
+	return zb32.EncodeToString(data) + ".snode"
+
 }
 
 func (node *ServiceNode) URL(path string) *url.URL {
 	return &url.URL{
 		Scheme: "https",
-		Host: net.JoinHostPort(node.SNodeAddr(), fmt.Sprintf("%d", node.StoragePort)),
-		Path: path,
+		Host:   net.JoinHostPort(node.SNodeAddr(), fmt.Sprintf("%d", node.StoragePort)),
+		Path:   path,
 	}
 }
 
 func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*ServiceNode, error) {
 	fmt.Printf("store for %s at %s\n", sessionID, node.StorageURL())
-	request := map[string]interface{} {
-		"pubKey": sessionID,
-			"ttl": fmt.Sprintf("%d", constants.TTL),
-			"timestamp": fmt.Sprintf("%d",utils.TimeNow()),
-			"data": base64.StdEncoding.EncodeToString(msg.Data()),
-		}
+	request := map[string]interface{}{
+		"pubKey":    sessionID,
+		"ttl":       fmt.Sprintf("%d", constants.TTL),
+		"timestamp": fmt.Sprintf("%d", utils.TimeNow()),
+		"data":      base64.StdEncoding.EncodeToString(msg.Data()),
+	}
 	result, err := node.StorageAPI("store", request)
 	if err == nil {
 		snodes, ok := result["snodes"]
@@ -124,7 +122,7 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 		snode_list := snodes.([]interface{})
 		for _, snode_info := range snode_list {
 			snode, ok := snode_info.(map[string]interface{})
-			if ! ok {
+			if !ok {
 				continue
 			}
 			port, err := strconv.Atoi(fmt.Sprintf("%s", snode["port"]))
@@ -132,27 +130,27 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 				continue
 			}
 			info := &ServiceNode{
-				RemoteIP: fmt.Sprintf("%s", snode["ip"]),
-				StoragePort: port,
-				IdentityKey: fmt.Sprintf("%s", snode["pubkey_ed25519"]),
+				RemoteIP:      fmt.Sprintf("%s", snode["ip"]),
+				StoragePort:   port,
+				IdentityKey:   fmt.Sprintf("%s", snode["pubkey_ed25519"]),
 				EncryptionKey: fmt.Sprintf("%s", snode["pubkey_x25519"]),
 			}
 			fmt.Printf("retry via %s\n", info.StorageURL())
 			_, err = info.StoreMessage(sessionID, msg)
 			if err == nil {
 				return info, nil
-			}	
+			}
 		}
 		err = errors.New("could not store")
 	}
 	return nil, err
 }
 
-func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]model.Message, error){
-	request := map[string]interface{} {
-		"pubKey": sessionID,
-			"lastHash": lastHash,
-		}
+func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]model.Message, error) {
+	request := map[string]interface{}{
+		"pubKey":   sessionID,
+		"lastHash": lastHash,
+	}
 	result, err := node.StorageAPI("retrieve", request)
 	if err != nil {
 		return nil, err
@@ -178,8 +176,8 @@ func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]mod
 		hash := fmt.Sprintf("%s", m["hash"])
 		timestamp := fmt.Sprintf("%s", m["timestamp"])
 		messages = append(messages, model.Message{
-			Raw: string(data),
-			Hash: hash,
+			Raw:       string(data),
+			Hash:      hash,
 			Timestamp: timestamp,
 		})
 	}
@@ -196,22 +194,22 @@ type serviceNodeListResponse struct {
 
 /// GetSNodeList fetches from this service node a list of all known service nodes
 func (node *ServiceNode) GetSNodeList() ([]ServiceNode, error) {
-	
-	jsonBody := map[string]interface{} {
+
+	jsonBody := map[string]interface{}{
 		"active_only": true,
-			"fields": makeFields("public_ip", "storage_port", "pubkey_ed25519", "pubkey_x25519"),
-		}
-	jsonReq := map[string]interface{} {
+		"fields":      makeFields("public_ip", "storage_port", "pubkey_ed25519", "pubkey_x25519", "swarm_id"),
+	}
+	jsonReq := map[string]interface{}{
 		"jsonrpc": "2.0",
-		"id": 0,
-		"method": "get_n_service_nodes",
-		"params": jsonBody,
+		"id":      0,
+		"method":  "get_n_service_nodes",
+		"params":  jsonBody,
 	}
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(jsonReq)
 
-	client  := http.Client{
+	client := http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: node.TLSConfig(),
 		},
@@ -224,12 +222,12 @@ func (node *ServiceNode) GetSNodeList() ([]ServiceNode, error) {
 	}
 
 	var response = serviceNodeListResponse{}
-	
+
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return response.Result.Nodes, nil
 }
