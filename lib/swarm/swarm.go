@@ -42,6 +42,7 @@ func GetSwarmForPubkey(snodes []ServiceNode, pk string) (swarm []ServiceNode) {
 			id = dist
 		}
 	}
+
 	for _, node := range snodes {
 		if node.SwarmID == id {
 			swarm = append(swarm, node)

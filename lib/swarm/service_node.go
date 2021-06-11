@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base32"
 	"encoding/base64"
-	"encoding/hex"
+	_ "encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,6 +67,7 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 
 	resp, err := client.Post(node.StorageURL().String(), "application/json", body)
 	if err != nil {
+		fmt.Printf("post failed: %s\n", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -76,11 +77,10 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
-
 	jsonResponse := make(map[string]interface{})
-
 	err = json.NewDecoder(responseBody).Decode(&jsonResponse)
 	if err != nil {
+		fmt.Printf("decode failed: %s\n", err.Error())
 		return nil, err
 	}
 	return jsonResponse, nil
@@ -92,8 +92,9 @@ func (node *ServiceNode) SNodeAddr() string {
 	if node.IdentityKey == "" {
 		return node.RemoteIP
 	}
-	data, _ := hex.DecodeString(node.IdentityKey)
-	return zb32.EncodeToString(data) + ".snode"
+	return node.RemoteIP
+	// data, _ := hex.DecodeString(node.IdentityKey)
+	// return zb32.EncodeToString(data) + ".snode"
 
 }
 
@@ -103,6 +104,27 @@ func (node *ServiceNode) URL(path string) *url.URL {
 		Host:   net.JoinHostPort(node.SNodeAddr(), fmt.Sprintf("%d", node.StoragePort)),
 		Path:   path,
 	}
+}
+
+func decodeSNodes(snodes interface{}) (infos []*ServiceNode) {
+	snode_list := snodes.([]interface{})
+	for _, snode_info := range snode_list {
+		snode, ok := snode_info.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		port, err := strconv.Atoi(fmt.Sprintf("%s", snode["port"]))
+		if err != nil {
+			continue
+		}
+		infos = append(infos, &ServiceNode{
+			RemoteIP:      fmt.Sprintf("%s", snode["ip"]),
+			StoragePort:   port,
+			IdentityKey:   fmt.Sprintf("%s", snode["pubkey_ed25519"]),
+			EncryptionKey: fmt.Sprintf("%s", snode["pubkey_x25519"]),
+		})
+	}
+	return
 }
 
 func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*ServiceNode, error) {
@@ -115,30 +137,14 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 	}
 	result, err := node.StorageAPI("store", request)
 	if err == nil {
-		snodes, ok := result["snodes"]
+		snodes_obj, ok := result["snodes"]
 		if !ok {
 			return node, nil
 		}
-		snode_list := snodes.([]interface{})
-		for _, snode_info := range snode_list {
-			snode, ok := snode_info.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			port, err := strconv.Atoi(fmt.Sprintf("%s", snode["port"]))
-			if err != nil {
-				continue
-			}
-			info := &ServiceNode{
-				RemoteIP:      fmt.Sprintf("%s", snode["ip"]),
-				StoragePort:   port,
-				IdentityKey:   fmt.Sprintf("%s", snode["pubkey_ed25519"]),
-				EncryptionKey: fmt.Sprintf("%s", snode["pubkey_x25519"]),
-			}
-			fmt.Printf("retry via %s\n", info.StorageURL())
-			_, err = info.StoreMessage(sessionID, msg)
+		for _, snode := range decodeSNodes(snodes_obj) {
+			_, err = snode.StoreMessage(sessionID, msg)
 			if err == nil {
-				return info, nil
+				return snode, nil
 			}
 		}
 		err = errors.New("could not store")
@@ -147,6 +153,7 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 }
 
 func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]model.Message, error) {
+	fmt.Printf("fetch all for %s at %s\n", sessionID, node.StorageURL())
 	request := map[string]interface{}{
 		"pubKey":   sessionID,
 		"lastHash": lastHash,
@@ -156,6 +163,16 @@ func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]mod
 		return nil, err
 	}
 	var messages []model.Message
+	snodes, ok := result["snodes"]
+	if ok {
+		for _, snode := range decodeSNodes(snodes) {
+			msgs, err := snode.FetchMessages(sessionID, lastHash)
+			if err == nil {
+				return msgs, nil
+			}
+		}
+	}
+
 	msgs, ok := result["messages"]
 	if !ok {
 		return nil, errors.New("invalid data, no messages key")

@@ -5,12 +5,27 @@ import (
 	"fmt"
 	"github.com/majestrate/session/lib/protobuf"
 	"google.golang.org/protobuf/proto"
+	"strings"
+	"unicode"
 )
 
 type Message struct {
 	Raw       string
 	Hash      string
 	Timestamp string
+}
+
+func (msg *Message) IRCLine() string {
+	return strings.TrimFunc(msg.Raw, func(r rune) bool {
+		if r == '\x01' || unicode.IsPrint(r) {
+			return false
+		}
+		return r == '\r' || r == '\n'
+	})
+}
+
+func (msg *Message) From() string {
+	return "anonymous"
 }
 
 func (msg *Message) Data() []byte {
@@ -34,7 +49,6 @@ func (msg *Message) Decode() ([]byte, error) {
 	if env.Source == nil {
 		return nil, errors.New("no source in envelope")
 	}
-	fmt.Printf("Decoding websocket message\n")
 	req := &protobuf.WebSocketRequestMessage{}
 	err = proto.Unmarshal([]byte(*env.Source), req)
 	if err != nil {
@@ -44,5 +58,11 @@ func (msg *Message) Decode() ([]byte, error) {
 	if req == nil {
 		return nil, errors.New("no request in envelope")
 	}
-	return req.Body, nil
+	m := &Message{Raw: string(req.Body)}
+	env, err = m.decodeEnvelope()
+	if err != nil {
+		fmt.Printf("failed to decode inner envelope: %s\n", err.Error())
+		return nil, err
+	}
+	return env.Content, nil
 }

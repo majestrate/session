@@ -5,9 +5,9 @@ import (
 	"github.com/majestrate/session/lib/client"
 	"github.com/majestrate/session/lib/config"
 	"github.com/majestrate/session/lib/cryptography"
-	_ "github.com/majestrate/session/lib/fetcher"
+	"github.com/majestrate/session/lib/irc"
+	"net"
 	"os"
-	"time"
 )
 
 const keyfile = "seed.dat"
@@ -36,22 +36,19 @@ func main() {
 
 	fmt.Printf("we are %s\n", me.SessionID())
 
-	for {
-
-		me.Update()
-
-		msgs, err := me.FetchNewMessages()
-		if err != nil {
-			fmt.Printf("failed to get new messages: %s\n", err.Error())
-		}
-		for idx, msg := range msgs {
-			m, err := me.DecryptMessage(msg)
-			if err != nil {
-				fmt.Printf("error: %s\n", err.Error())
-				continue
-			}
-			fmt.Printf("%d: %q\n", idx, m)
-		}
-		time.Sleep(5 * time.Second)
+	port := "6667"
+	if len(os.Args) > 1 {
+		port = os.Args[1]
 	}
+
+	sock, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+	if err != nil {
+		fmt.Printf("could not set up irc: %s\n", err.Error())
+		return
+	}
+	defer sock.Close()
+	server := irc.CreateServer(me)
+	go server.Run()
+	server.Serve(sock)
+
 }
