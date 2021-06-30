@@ -33,15 +33,14 @@ func main() {
 	}
 
 	me := client.NewClient(keys)
-
 	fmt.Printf("we are %s\n", me.SessionID())
-
 	port := "6667"
 	if len(os.Args) > 1 {
 		port = os.Args[1]
 	}
-
-	sock, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+	addr := net.JoinHostPort("127.0.0.1", port)
+	fmt.Printf("starting irc daemon at %s\n", addr)
+	sock, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Printf("could not set up irc: %s\n", err.Error())
 		return
@@ -49,6 +48,7 @@ func main() {
 	defer sock.Close()
 	server := irc.CreateServer(me)
 	go server.Run()
+	fmt.Printf("running\n")
 	server.Serve(sock)
 
 }

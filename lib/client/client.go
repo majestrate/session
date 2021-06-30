@@ -49,7 +49,7 @@ func (cl *Client) FetchNewMessages() ([]model.Message, error) {
 	return cl.recvFrom(cl.SessionID())
 }
 
-func (cl *Client) RecvFrom(src string) ([]model.Message, error) {
+func (cl *Client) RecvFromHash(src string) ([]model.Message, error) {
 	src = "05" + cryptography.B2SumHex(src)
 	fmt.Printf("recv from %s\n", src)
 	return cl.recvFrom(src)
@@ -76,11 +76,16 @@ func (cl *Client) recvFrom(src string) (found []model.Message, err error) {
 }
 
 func (cl *Client) DecryptMessage(msg model.Message) ([]byte, error) {
-	return []byte(msg.Raw), nil
+	data, err := msg.Decode()
+	if err != nil {
+		return nil, err
+	}
+	return cl.keys.DecryptSessionMessage(data)
+	// return []byte(msg.Raw), nil
 }
 
 /// SendT sends a message msg to destination dest (some string)
-func (cl *Client) SendTo(dest, msg string) {
+func (cl *Client) SendToHash(dest, msg string) {
 	dest = "05" + cryptography.B2SumHex(dest)
 	fmt.Printf("send to %s\n", dest)
 	node := cl.snodes.Random()

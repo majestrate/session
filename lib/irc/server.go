@@ -98,7 +98,7 @@ func (s *Server) Run() {
 	for {
 		select {
 		case msgParts := <-s.sendMsg:
-			s.client.SendTo(msgParts[1], msgParts[2])
+			s.client.SendToHash(msgParts[1], msgParts[2])
 		case <-s.fetchTimer.C:
 			s.client.Update()
 			go s.fetchAll()
@@ -116,9 +116,16 @@ func (s *Server) fetchAll() {
 		return true
 	})
 	for _, chnl := range channels {
-		msgs, _ := s.client.RecvFrom(chnl)
+		msgs, _ := s.client.RecvFromHash(chnl)
 		for _, msg := range msgs {
 			s.recvMsg <- [3]string{chnl, msg.From(), msg.IRCLine()}
+		}
+	}
+	msgs, _ := s.client.FetchNewMessages()
+	for _, msg := range msgs {
+		data, err := s.client.DecryptMessage(msg)
+		if err == nil {
+			fmt.Printf("new msg %q\n", data)
 		}
 	}
 }
@@ -214,7 +221,7 @@ func (c *ircConn) greet() {
 		[]string{irc.RPL_MYINFO, "my info goes here"},
 		[]string{irc.RPL_ISUPPORT, "CHANTYPES=#"},
 		[]string{irc.RPL_MOTDSTART, "bruh", "bruh"},
-		[]string{irc.RPL_MOTD, "bruh", "bruh"},
+		[]string{irc.RPL_MOTD, "do a /join #bruh"},
 		[]string{irc.RPL_ENDOFMOTD, "done"},
 	}
 
