@@ -1,15 +1,15 @@
 package model
 
 import (
+	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/majestrate/session/lib/protobuf"
 	"github.com/majestrate/session/lib/cryptography"
+	"github.com/majestrate/session/lib/protobuf"
 	"google.golang.org/protobuf/proto"
 	"strings"
 	"unicode"
-	"encoding/hex"
-	"bytes"
 )
 
 type Message struct {
@@ -72,11 +72,11 @@ func (msg *Message) decodeRaw() ([]byte, error) {
 
 type PlainMessage struct {
 	Message *protobuf.DataMessage
-	From string
+	From    string
 }
 
 func (msg *Message) Decrypt(keys *cryptography.KeyPair) (*PlainMessage, error) {
-	raw, err :=  msg.decodeRaw()
+	raw, err := msg.decodeRaw()
 	if err != nil {
 		return nil, err
 	}

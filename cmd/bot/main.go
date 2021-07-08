@@ -55,7 +55,7 @@ func main() {
 			}
 			fmt.Printf("<%s> %s\n", plain.From, plain.Message.GetBody())
 		}
-		
+
 		delay = baseDelay
 		time.Sleep(delay)
 	}

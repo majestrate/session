@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	//	"golang.org/x/crypto/curve25519"
-	"golang.org/x/crypto/nacl/box"
 	"crypto/ed25519"
 	"crypto/sha512"
 	"github.com/majestrate/session/lib/cryptography/edwards25519"
+	"golang.org/x/crypto/nacl/box"
 	// "io"
 	"io/fs"
 	"io/ioutil"
@@ -59,7 +59,7 @@ func (keys *KeyPair) decryptOuterMessage(data []byte) ([]byte, error) {
 	copy(pub[:], keys.publicKey)
 	copy(priv[:], keys.secretKey)
 	if edToCurve(&pub, &X) && edPrivToCurvePriv(&priv, &x) {
-	
+
 		msg, ok := box.OpenAnonymous(out, data[:], &X, &x)
 		if !ok {
 			return nil, ErrDecryptError
@@ -69,11 +69,10 @@ func (keys *KeyPair) decryptOuterMessage(data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("failed to compute our curve25519 keys")
 }
 
-
 func edToCurve(ed *[32]byte, curve *[32]byte) bool {
 	var A edwards25519.ExtendedGroupElement
 	var x, oneMinusY edwards25519.FieldElement
-	if ! A.FromBytes(ed) {
+	if !A.FromBytes(ed) {
 		return false
 	}
 	edwards25519.FeOne(&oneMinusY)
@@ -94,7 +93,6 @@ func edPrivToCurvePriv(ed *[32]byte, curve *[32]byte) bool {
 	return true
 }
 
-
 /// DecryptAndVerify takes a raw message and decrypts the outer message, verifies the inner message's signature and then returns the plaintext and the sender's pubkey
 func (keys *KeyPair) DecryptAndVerify(data []byte) ([]byte, []byte, error) {
 	plain, err := keys.decryptOuterMessage(data)
@@ -110,22 +108,21 @@ func (keys *KeyPair) DecryptAndVerify(data []byte) ([]byte, []byte, error) {
 	copy(sig[:], plain[len(plain)-64:])
 	copy(themEdKey[:], plain[len(plain)-(32+64):len(plain)-64])
 	copy(usEdKey[:], keys.publicKey)
-	
-	if ! edToCurve(&themEdKey, &themXKey) {
+
+	if !edToCurve(&themEdKey, &themXKey) {
 		return nil, nil, fmt.Errorf("failed to convert ed25519 key to curve25519 key")
 	}
 
-	if ! edToCurve(&usEdKey, &usXKey) {
+	if !edToCurve(&usEdKey, &usXKey) {
 		return nil, nil, fmt.Errorf("failed to convert ed25519 key to curve25519 key")
 	}
 
-	
 	var body []byte
 	msg := plain[:len(plain)-(32+64)]
 	body = append(body, msg...)
 	body = append(body, (themEdKey[:])...)
 	body = append(body, (usXKey[:])...)
-	if ! ed25519.Verify(ed25519.PublicKey(themEdKey[:]), body, sig[:]) {
+	if !ed25519.Verify(ed25519.PublicKey(themEdKey[:]), body, sig[:]) {
 		return nil, nil, fmt.Errorf("failed to verify signature from %s, ed=%s sig=%s, data=%s, plain=%s", hex.EncodeToString(themXKey[:]), hex.EncodeToString(themEdKey[:]), hex.EncodeToString(sig[:]), hex.EncodeToString(body), hex.EncodeToString(plain))
 	}
 	return msg, themXKey[:], nil
