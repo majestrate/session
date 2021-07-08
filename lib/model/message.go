@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/majestrate/session/lib/protobuf"
+	"github.com/majestrate/session/lib/cryptography"
 	"google.golang.org/protobuf/proto"
 	"strings"
 	"unicode"
+	"encoding/hex"
+	"bytes"
 )
 
 type Message struct {
@@ -41,7 +44,7 @@ func (msg *Message) decodeEnvelope() (*protobuf.Envelope, error) {
 	return env, err
 }
 
-func (msg *Message) Decode() ([]byte, error) {
+func (msg *Message) decodeRaw() ([]byte, error) {
 	env, err := msg.decodeEnvelope()
 	if err != nil {
 		return nil, err
@@ -65,4 +68,32 @@ func (msg *Message) Decode() ([]byte, error) {
 		return nil, err
 	}
 	return env.Content, nil
+}
+
+type PlainMessage struct {
+	Message *protobuf.DataMessage
+	From string
+}
+
+func (msg *Message) Decrypt(keys *cryptography.KeyPair) (*PlainMessage, error) {
+	raw, err :=  msg.decodeRaw()
+	if err != nil {
+		return nil, err
+	}
+	data, from, err := keys.DecryptAndVerify(raw)
+	if err != nil {
+		return nil, err
+	}
+	// kill padding
+	idx := bytes.LastIndexByte(data, 0x80)
+	data = data[:idx]
+	plain := new(PlainMessage)
+	var content protobuf.Content
+	plain.From = fmt.Sprintf("05%s", hex.EncodeToString(from))
+	err = proto.Unmarshal(data, &content)
+	if err != nil {
+		return nil, err
+	}
+	plain.Message = content.GetDataMessage()
+	return plain, nil
 }

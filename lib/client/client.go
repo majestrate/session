@@ -75,13 +75,8 @@ func (cl *Client) recvFrom(src string) (found []model.Message, err error) {
 	return
 }
 
-func (cl *Client) DecryptMessage(msg model.Message) ([]byte, error) {
-	data, err := msg.Decode()
-	if err != nil {
-		return nil, err
-	}
-	return cl.keys.DecryptSessionMessage(data)
-	// return []byte(msg.Raw), nil
+func (cl *Client) DecryptMessage(msg model.Message) (*model.PlainMessage, error) {
+	return msg.Decrypt(cl.keys)
 }
 
 /// SendT sends a message msg to destination dest (some string)
