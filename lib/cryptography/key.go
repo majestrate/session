@@ -93,6 +93,33 @@ func edPrivToCurvePriv(ed *[32]byte, curve *[32]byte) bool {
 	return true
 }
 
+func (keys *KeyPair) SignAndEncrypt(recipHex string, data []byte) ([]byte, error) {
+
+	var usEdKey [32]byte
+	var themXKey [32]byte
+
+	recipX, err := hex.DecodeString(recipHex)
+	if err != nil {
+		return nil, err
+	}
+	copy(themXKey[:], recipX)
+	copy(usEdKey[:], keys.publicKey)
+
+	var body []byte
+	body = append(body, data...)
+	body = append(body, usEdKey[:]...)
+	body = append(body, themXKey[:]...)
+
+	sig := ed25519.Sign(keys.secretKey, body)
+
+	var plain []byte
+	plain = append(plain, data...)
+	plain = append(plain, usEdKey[:]...)
+	plain = append(plain, sig...)
+	var raw []byte
+	return box.SealAnonymous(raw, plain, &themXKey, rand.Reader)
+}
+
 /// DecryptAndVerify takes a raw message and decrypts the outer message, verifies the inner message's signature and then returns the plaintext and the sender's pubkey
 func (keys *KeyPair) DecryptAndVerify(data []byte) ([]byte, []byte, error) {
 	plain, err := keys.decryptOuterMessage(data)

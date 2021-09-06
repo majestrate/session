@@ -56,6 +56,7 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 		"method":  method,
 		"params":  params,
 	}
+	fmt.Printf("req %q\n", jsonReq)
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(jsonReq)
 

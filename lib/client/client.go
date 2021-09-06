@@ -79,10 +79,25 @@ func (cl *Client) DecryptMessage(msg model.Message) (*model.PlainMessage, error)
 	return msg.Decrypt(cl.keys)
 }
 
+func (cl *Client) SendTo(dst, body string, tag []byte) error {
+	msg := model.MakePlain(cl.SessionID(), body, tag)
+	raw, err := msg.Encrypt(cl.keys)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("send %q to %s\n", msg, dst)
+	cl.withRandomSNode(func(node swarm.ServiceNode) {
+		fmt.Printf("store for %s\n", dst)
+		node.StoreMessage(dst, model.Message{Raw: string(raw)})
+	})
+	return nil
+}
+
 /// SendT sends a message msg to destination dest (some string)
 func (cl *Client) SendToHash(dest, msg string) {
 	dest = "05" + cryptography.B2SumHex(dest)
 	fmt.Printf("send to %s\n", dest)
-	node := cl.snodes.Random()
-	node.StoreMessage(dest, model.Message{Raw: msg})
+	cl.snodes.VisitSwarmFor(dest, func(node swarm.ServiceNode) {
+		node.StoreMessage(dest, model.Message{Raw: msg})
+	})
 }

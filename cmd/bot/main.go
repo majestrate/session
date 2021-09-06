@@ -53,7 +53,13 @@ func main() {
 				fmt.Printf("decrypt failed: %s\n", err.Error())
 				continue
 			}
-			fmt.Printf("<%s> %s\n", plain.From, plain.Message.GetBody())
+			fmt.Printf("%q\n", plain.Message)
+			body := plain.Message.GetBody()
+			fmt.Printf("<%s> %s\n", plain.From, body)
+			err = me.SendTo(plain.From, "penis "+body, plain.ReplyTag())
+			if err != nil {
+				fmt.Printf("sendto failed: %s\n", err.Error())
+			}
 		}
 
 		delay = baseDelay
