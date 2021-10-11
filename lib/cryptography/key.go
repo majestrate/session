@@ -23,6 +23,10 @@ type KeyPair struct {
 	secretKey ed25519.PrivateKey
 }
 
+func (keys *KeyPair) PubKey() []byte {
+	return keys.publicKey[:]
+}
+
 func (keys *KeyPair) Regen() {
 	keys.publicKey, keys.secretKey, _ = ed25519.GenerateKey(rand.Reader)
 }

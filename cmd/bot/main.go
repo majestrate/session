@@ -56,12 +56,11 @@ func main() {
 			fmt.Printf("%q\n", plain.Message)
 			body := plain.Message.GetBody()
 			fmt.Printf("<%s> %s\n", plain.From, body)
-			err = me.SendTo(plain.From, "penis "+body, plain.ReplyTag())
+			err = me.SendTo(plain.From, "reply "+body, keys.PubKey())
 			if err != nil {
 				fmt.Printf("sendto failed: %s\n", err.Error())
 			}
 		}
-
 		delay = baseDelay
 		time.Sleep(delay)
 	}
