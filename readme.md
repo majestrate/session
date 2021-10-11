@@ -20,3 +20,4 @@ echo bot:
 
     $ go generate ./...
     $ go get ./cmd/echobot
+    $ go build ./cmd/echobot
