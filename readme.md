@@ -3,16 +3,20 @@
 
 session bot api
 
+## requirements
 
-## demos
+* go >= 1.16
+* protoc
+* protoc-gen-go
 
+
+## building
 
 check source code out:
 
     $ git clone https://github.com/majestrate/session
     $ cd session
-    $ go generate ./...
-
 echo bot:
 
+    $ go generate ./...
     $ go get ./cmd/echobot
