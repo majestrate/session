@@ -32,7 +32,7 @@ func main() {
 	for _, arg := range os.Args[2:] {
 		msg += fmt.Sprintf("%s ", arg)
 	}
-	
+
 	me.Update()
 	me.SendTo(to, msg, keys.PubKey())
 

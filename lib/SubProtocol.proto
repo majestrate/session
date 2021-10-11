@@ -16,7 +16,8 @@
  */
 package signalservice;
 
-option go_package = "./lib/protobuf";
+
+option go_package = "./protobuf";
 
 
 message WebSocketRequestMessage {

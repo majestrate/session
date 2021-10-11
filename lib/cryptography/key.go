@@ -17,14 +17,24 @@ import (
 
 var ErrBadSeedSize = errors.New("bad seed size")
 var ErrDecryptError = errors.New("failed to decrypt")
+var ErrEncryptError = errors.New("failed to encrypt")
 
 type KeyPair struct {
 	publicKey ed25519.PublicKey
 	secretKey ed25519.PrivateKey
 }
 
-func (keys *KeyPair) PubKey() []byte {
+func (keys *KeyPair) edPubKey() []byte {
 	return keys.publicKey[:]
+}
+
+func (keys *KeyPair) Pubkey() []byte {
+	var X, Pub [32]byte
+	copy(Pub[:], keys.publicKey)
+	if edToCurve(&Pub, &X) {
+		return X[:]
+	}
+	return nil
 }
 
 func (keys *KeyPair) Regen() {
@@ -32,12 +42,7 @@ func (keys *KeyPair) Regen() {
 }
 
 func (keys *KeyPair) SessionID() string {
-	var X, Pub [32]byte
-	copy(Pub[:], keys.publicKey)
-	if edToCurve(&Pub, &X) {
-		return fmt.Sprintf("05%s", hex.EncodeToString(X[:]))
-	}
-	return ""
+	return fmt.Sprintf("05%s", hex.EncodeToString(keys.Pubkey()))
 }
 
 func (keys *KeyPair) SaveFile(fname string) error {
@@ -73,6 +78,11 @@ func (keys *KeyPair) decryptOuterMessage(data []byte) ([]byte, error) {
 	return nil, fmt.Errorf("failed to compute our curve25519 keys")
 }
 
+func (keys *KeyPair) encryptOuterMessage(data []byte, toXKey *[32]byte) ([]byte, error) {
+	out := make([]byte, 0)
+	return box.SealAnonymous(out, data[:], toXKey, rand.Reader)
+}
+
 func edToCurve(ed *[32]byte, curve *[32]byte) bool {
 	var A edwards25519.ExtendedGroupElement
 	var x, oneMinusY edwards25519.FieldElement
@@ -97,15 +107,11 @@ func edPrivToCurvePriv(ed *[32]byte, curve *[32]byte) bool {
 	return true
 }
 
-func (keys *KeyPair) SignAndEncrypt(recipHex string, data []byte) ([]byte, error) {
+func (keys *KeyPair) SignAndEncrypt(recipX, data []byte) ([]byte, error) {
 
 	var usEdKey [32]byte
 	var themXKey [32]byte
 
-	recipX, err := hex.DecodeString(recipHex)
-	if err != nil {
-		return nil, err
-	}
 	copy(themXKey[:], recipX)
 	copy(usEdKey[:], keys.publicKey)
 
@@ -120,8 +126,8 @@ func (keys *KeyPair) SignAndEncrypt(recipHex string, data []byte) ([]byte, error
 	plain = append(plain, data...)
 	plain = append(plain, usEdKey[:]...)
 	plain = append(plain, sig...)
-	var raw []byte
-	return box.SealAnonymous(raw, plain, &themXKey, rand.Reader)
+
+	return keys.encryptOuterMessage(plain, &themXKey)
 }
 
 /// DecryptAndVerify takes a raw message and decrypts the outer message, verifies the inner message's signature and then returns the plaintext and the sender's pubkey
