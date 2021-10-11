@@ -127,7 +127,11 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair) ([]byte, error) {
 		return nil, err
 	}
 	addPadding(&data)
-	raw, err := keys.SignAndEncrypt(msg.From, data)
+	from, err := hex.DecodeString(msg.From[2:])
+	if err != nil {
+		return nil,err
+	}
+	raw, err := keys.SignAndEncrypt(from, data)
 	if err != nil {
 		return nil, err
 	}

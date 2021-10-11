@@ -7,10 +7,12 @@ session bot api
 ## demos
 
 
-simple sender:
+check source code out:
 
-    $ go build ./cmd/send
+    $ git clone https://github.com/majestrate/session
+    $ cd session
+    $ go generate ./...
 
 echo bot:
 
-    $ go build ./cmd/echobot
+    $ go get ./cmd/echobot
