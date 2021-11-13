@@ -101,7 +101,7 @@ var envType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
 var outerEnvType = protobuf.Envelope_Type(1)
 
 func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
-	now := uint64(time.Now().Unix() * 1000)
+	now := uint64(time.Now().UnixNano() / 1000000)
 	msg.Message.Timestamp = &now
 	content := protobuf.Content{
 		DataMessage: msg.Message,
