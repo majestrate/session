@@ -97,7 +97,7 @@ var wsPath = "/api/v1/message"
 var wsID = uint64(0)
 var envSource = ""
 
-var envType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
+var innerEnvType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
 var outerEnvType = protobuf.Envelope_Type(1)
 
 func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
@@ -119,7 +119,7 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte,
 		return nil, err
 	}
 	innerEnv := &protobuf.Envelope{
-		Type:      envType,
+		Type:      innerEnvType,
 		Content:   raw,
 		Timestamp: &now,
 	}
