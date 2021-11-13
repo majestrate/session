@@ -24,4 +24,10 @@ building the bot:
 
 ## running
 
+echobot:
+
     $ ./archer
+
+custom message handler:
+
+    $ ./archer ./example/reply.sh
