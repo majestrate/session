@@ -16,18 +16,25 @@ type Client struct {
 	ourSwarm *swarm.ServiceNode
 }
 
+func (cl *Client) Store() MessageStore {
+	return cl.store
+}
+
 func (cl *Client) SessionID() string {
 	return cl.keys.SessionID()
 }
 
-func NewClient(keys *cryptography.KeyPair) *Client {
+func NewClient(keys *cryptography.KeyPair, store MessageStore) *Client {
+	if store == nil {
+		store = MemoryStore()
+	}
 	return &Client{
 		keys: keys,
 		snodes: SnodeMap{
 			snodeMap:     make(map[string]swarm.ServiceNode),
 			nextUpdateAt: time.Now(),
 		},
-		store: MemoryStore(),
+		store: store,
 	}
 }
 

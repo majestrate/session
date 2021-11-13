@@ -1,10 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/majestrate/session/lib/client"
 	"github.com/majestrate/session/lib/config"
 	"github.com/majestrate/session/lib/cryptography"
+	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"time"
 )
@@ -30,8 +32,15 @@ func main() {
 		fmt.Printf("could not load %s: %s\n", keyfile, err.Error())
 		return
 	}
+	c, err := sql.Open("sqlite3", "messages.db")
+	if err != nil {
+		fmt.Printf("could not open database: %s", err.Error())
+		return
+	}
+	store := client.SQLStore(c)
+	defer store.Close()
 
-	me := client.NewClient(keys)
+	me := client.NewClient(keys, store)
 	fmt.Printf("we are %s\n", me.SessionID())
 	baseDelay := 5 * time.Second
 	delay := baseDelay
@@ -58,7 +67,7 @@ func main() {
 				continue
 			}
 			fmt.Printf("%s | <%s> %s\n", plain.When(), plain.From, body)
-			err = me.SendTo(plain.From, "reply "+body)
+			err = me.SendTo(plain.From, fmt.Sprintf("you said: '%s'", body))
 			if err != nil {
 				fmt.Printf("sendto failed: %s\n", err.Error())
 			}
