@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"github.com/majestrate/session/lib/constants"
 	"github.com/majestrate/session/lib/swarm"
 	"math/rand"
@@ -56,7 +55,6 @@ func (s *SnodeMap) Update(node swarm.ServiceNode) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("got %d nodes from %s\n", len(peers), node.SNodeAddr())
 	s.snodeMap = make(map[string]swarm.ServiceNode)
 	for _, peer := range peers {
 		s.snodeMap[peer.IdentityKey] = peer

@@ -56,7 +56,6 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 		"method":  method,
 		"params":  params,
 	}
-	fmt.Printf("req %q\n", jsonReq)
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(jsonReq)
 
@@ -68,7 +67,7 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 
 	resp, err := client.Post(node.StorageURL().String(), "application/json", body)
 	if err != nil {
-		fmt.Printf("post failed: %s\n", err.Error())
+		err = fmt.Errorf("post failed: %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -81,7 +80,7 @@ func (node *ServiceNode) StorageAPI(method string, params map[string]interface{}
 	jsonResponse := make(map[string]interface{})
 	err = json.NewDecoder(responseBody).Decode(&jsonResponse)
 	if err != nil {
-		fmt.Printf("decode failed: %s\n", err.Error())
+		err = fmt.Errorf("response decode failed: %s", err.Error())
 		return nil, err
 	}
 	return jsonResponse, nil
@@ -154,7 +153,6 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 }
 
 func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]model.Message, error) {
-	fmt.Printf("fetch all for %s at %s\n", sessionID, node.StorageURL())
 	request := map[string]interface{}{
 		"pubKey":   sessionID,
 		"lastHash": lastHash,

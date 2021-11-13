@@ -52,7 +52,6 @@ func (msg *Message) decodeRaw() ([]byte, error) {
 	if env.Source == nil {
 		return nil, errors.New("no source in envelope")
 	}
-	fmt.Printf("outer %q\n", env)
 	req := &protobuf.WebSocketRequestMessage{}
 	err = proto.Unmarshal([]byte(*env.Source), req)
 	if err != nil {
@@ -63,7 +62,6 @@ func (msg *Message) decodeRaw() ([]byte, error) {
 	}
 	m := &Message{Raw: string(req.Body)}
 	env, err = m.decodeEnvelope()
-	fmt.Printf("inner %q\n", env)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +103,6 @@ var outerEnvType = protobuf.Envelope_Type(1)
 func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
 	now := uint64(time.Now().Unix() * 1000)
 	msg.Message.Timestamp = &now
-	fmt.Printf("%s\n", msg.When())
 	content := protobuf.Content{
 		DataMessage: msg.Message,
 	}

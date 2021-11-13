@@ -58,7 +58,6 @@ func (cl *Client) FetchNewMessages() ([]model.Message, error) {
 
 func (cl *Client) RecvFromHash(src string) ([]model.Message, error) {
 	src = "05" + cryptography.B2SumHex(src)
-	fmt.Printf("recv from %s\n", src)
 	return cl.recvFrom(src)
 }
 
@@ -78,7 +77,6 @@ func (cl *Client) recvFrom(src string) (found []model.Message, err error) {
 			found = append(found, msg)
 		}
 	}
-	fmt.Printf("got %d new messages\n", len(found))
 	return
 }
 
@@ -98,7 +96,6 @@ func (cl *Client) SendTo(dst, body string) error {
 		return err
 	}
 	cl.snodes.VisitSwarmFor(dst, 1, func(node swarm.ServiceNode) {
-		fmt.Printf("store for %s at %x\n", dst, node.SwarmID)
 		node.StoreMessage(dst, model.Message{Raw: string(raw)})
 	})
 	return nil
@@ -107,7 +104,6 @@ func (cl *Client) SendTo(dst, body string) error {
 /// SendT sends a message msg to destination dest (some string)
 func (cl *Client) SendToHash(dest, msg string) {
 	dest = "05" + cryptography.B2SumHex(dest)
-	fmt.Printf("send to %s\n", dest)
 	cl.snodes.VisitSwarmFor(dest, 4, func(node swarm.ServiceNode) {
 		node.StoreMessage(dest, model.Message{Raw: msg})
 	})
