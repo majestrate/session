@@ -79,15 +79,19 @@ func (cl *Client) DecryptMessage(msg model.Message) (*model.PlainMessage, error)
 	return msg.Decrypt(cl.keys)
 }
 
-func (cl *Client) SendTo(dst, body string, tag []byte) error {
-	msg := model.MakePlain(cl.SessionID(), body, tag)
-	raw, err := msg.Encrypt(cl.keys)
+func (cl *Client) makePlain(data string) *model.PlainMessage {
+	msg := model.MakePlain(data)
+	return msg
+}
+
+func (cl *Client) SendTo(dst, body string) error {
+	msg := cl.makePlain(body)
+	raw, err := msg.Encrypt(cl.keys, dst)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("send %q to %s\n", msg, dst)
-	cl.withRandomSNode(func(node swarm.ServiceNode) {
-		fmt.Printf("store for %s\n", dst)
+	cl.snodes.VisitSwarmFor(dst, 1, func(node swarm.ServiceNode) {
+		fmt.Printf("store for %s at %x\n", dst, node.SwarmID)
 		node.StoreMessage(dst, model.Message{Raw: string(raw)})
 	})
 	return nil
@@ -97,7 +101,7 @@ func (cl *Client) SendTo(dst, body string, tag []byte) error {
 func (cl *Client) SendToHash(dest, msg string) {
 	dest = "05" + cryptography.B2SumHex(dest)
 	fmt.Printf("send to %s\n", dest)
-	cl.snodes.VisitSwarmFor(dest, func(node swarm.ServiceNode) {
+	cl.snodes.VisitSwarmFor(dest, 4, func(node swarm.ServiceNode) {
 		node.StoreMessage(dest, model.Message{Raw: msg})
 	})
 }

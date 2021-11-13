@@ -53,10 +53,12 @@ func main() {
 				fmt.Printf("decrypt failed: %s\n", err.Error())
 				continue
 			}
-			fmt.Printf("%q\n", plain.Message)
-			body := plain.Message.GetBody()
-			fmt.Printf("<%s> %s\n", plain.From, body)
-			err = me.SendTo(plain.From, "reply "+body, keys.Pubkey())
+			body := plain.Body()
+			if len(body) == 0 {
+				continue
+			}
+			fmt.Printf("%s | <%s> %s\n", plain.When(), plain.From, body)
+			err = me.SendTo(plain.From, "reply "+body)
 			if err != nil {
 				fmt.Printf("sendto failed: %s\n", err.Error())
 			}

@@ -1,14 +1,12 @@
 package model
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/majestrate/session/lib/cryptography"
 	"github.com/majestrate/session/lib/protobuf"
 	"google.golang.org/protobuf/proto"
-	"math"
 	"strings"
 	"time"
 	"unicode"
@@ -43,7 +41,6 @@ func (msg *Message) decodeEnvelope() (*protobuf.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("recv %q\n", env)
 	return env, err
 }
 
@@ -55,10 +52,10 @@ func (msg *Message) decodeRaw() ([]byte, error) {
 	if env.Source == nil {
 		return nil, errors.New("no source in envelope")
 	}
+	fmt.Printf("outer %q\n", env)
 	req := &protobuf.WebSocketRequestMessage{}
 	err = proto.Unmarshal([]byte(*env.Source), req)
 	if err != nil {
-		fmt.Printf("bad websocket message: %s\n", err.Error())
 		return nil, err
 	}
 	if req == nil {
@@ -66,8 +63,8 @@ func (msg *Message) decodeRaw() ([]byte, error) {
 	}
 	m := &Message{Raw: string(req.Body)}
 	env, err = m.decodeEnvelope()
+	fmt.Printf("inner %q\n", env)
 	if err != nil {
-		fmt.Printf("failed to decode inner envelope: %s\n", err.Error())
 		return nil, err
 	}
 	return env.Content, nil
@@ -78,35 +75,23 @@ type PlainMessage struct {
 	From    string
 }
 
+func (plain *PlainMessage) Body() string {
+	if plain.Message == nil || plain.Message.Body == nil {
+		return ""
+	}
+	return *plain.Message.Body
+}
+
+func (plain *PlainMessage) When() time.Time {
+	t := int64(0)
+	if plain.Message != nil && plain.Message.Timestamp != nil {
+		t = int64(*plain.Message.Timestamp) / 1000
+	}
+	return time.Unix(t, 0)
+}
+
 func (plain *PlainMessage) ReplyTag() []byte {
-	if plain.Message == nil {
-		return nil
-	}
-	return plain.Message.ProfileKey
-}
-
-const partSize = 160
-const padDelim = 0x80
-const padByte = 0x00
-
-func getPaddedMessageLength(originalLen int) int {
-	originalLen += 1
-	numParts := int(math.Floor(float64(originalLen) / partSize))
-	if numParts%partSize != 0 {
-		numParts += 1
-	}
-	return numParts * partSize
-}
-
-func addPadding(data *[]byte) {
-	dlen := len(*data)
-	msglen := getPaddedMessageLength(len(*data)+1) - 1
-	padlen := msglen - dlen
-	*data = append(*data, padDelim)
-	for padlen > 0 {
-		*data = append(*data, padByte)
-		padlen--
-	}
+	return nil
 }
 
 var wsVerb = "PUT"
@@ -115,10 +100,12 @@ var wsID = uint64(0)
 var envSource = ""
 
 var envType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
+var outerEnvType = protobuf.Envelope_Type(1)
 
-func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair) ([]byte, error) {
+func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
 	now := uint64(time.Now().Unix() * 1000)
-
+	msg.Message.Timestamp = &now
+	fmt.Printf("%s\n", msg.When())
 	content := protobuf.Content{
 		DataMessage: msg.Message,
 	}
@@ -126,19 +113,17 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	addPadding(&data)
-	from, err := hex.DecodeString(msg.From[2:])
-	if err != nil {
-		return nil,err
-	}
-	raw, err := keys.SignAndEncrypt(from, data)
+	to_bytes, err := hex.DecodeString(to[2:])
 	if err != nil {
 		return nil, err
 	}
-	rawStr := string(raw)
+	raw, err := keys.SignAndEncrypt(to_bytes, data)
+	if err != nil {
+		return nil, err
+	}
 	innerEnv := &protobuf.Envelope{
 		Type:      envType,
-		Source:    &rawStr,
+		Content:   raw,
 		Timestamp: &now,
 	}
 
@@ -161,26 +146,17 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair) ([]byte, error) {
 	}
 	reqDataStr := string(reqData)
 	env := &protobuf.Envelope{
-		Type:      envType,
+		Type:      &outerEnvType, // because shit af protocol
 		Source:    &reqDataStr,
 		Timestamp: &now,
 	}
-	fmt.Printf("%q\n", env)
 	return proto.Marshal(env)
 }
 
-func MakePlain(from, data string, tag []byte) *PlainMessage {
-	now := uint64(time.Now().Unix() * 1000)
+func MakePlain(data string) *PlainMessage {
 	return &PlainMessage{
-		From: from,
 		Message: &protobuf.DataMessage{
-			Body:       &data,
-			Timestamp:  &now,
-			ProfileKey: tag,
-			SyncTarget: &from,
-			Profile: &protobuf.DataMessage_LokiProfile{
-				DisplayName: &from,
-			},
+			Body: &data,
 		},
 	}
 }
@@ -188,23 +164,19 @@ func MakePlain(from, data string, tag []byte) *PlainMessage {
 func (msg *Message) Decrypt(keys *cryptography.KeyPair) (*PlainMessage, error) {
 	raw, err := msg.decodeRaw()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode outer envelope failed: %s", err.Error())
 	}
 	data, from, err := keys.DecryptAndVerify(raw)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decrypt and verify failed: %s", err.Error())
 	}
-	// kill padding
-	idx := bytes.LastIndexByte(data, padDelim)
-	data = data[:idx]
 	plain := new(PlainMessage)
-	var content protobuf.Content
+	content := &protobuf.Content{}
 	plain.From = fmt.Sprintf("05%s", hex.EncodeToString(from))
-	err = proto.Unmarshal(data, &content)
+	err = proto.Unmarshal(data, content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode inner content: %s", err.Error())
 	}
-	fmt.Printf("recv %s\n", content.String())
 	plain.Message = content.GetDataMessage()
 	return plain, nil
 }

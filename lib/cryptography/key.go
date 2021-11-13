@@ -115,13 +115,14 @@ func (keys *KeyPair) SignAndEncrypt(recipX, data []byte) ([]byte, error) {
 	copy(themXKey[:], recipX)
 	copy(usEdKey[:], keys.publicKey)
 
+	data = addPadding(data)
+
 	var body []byte
 	body = append(body, data...)
 	body = append(body, usEdKey[:]...)
 	body = append(body, themXKey[:]...)
 
 	sig := ed25519.Sign(keys.secretKey, body)
-
 	var plain []byte
 	plain = append(plain, data...)
 	plain = append(plain, usEdKey[:]...)
@@ -162,5 +163,5 @@ func (keys *KeyPair) DecryptAndVerify(data []byte) ([]byte, []byte, error) {
 	if !ed25519.Verify(ed25519.PublicKey(themEdKey[:]), body, sig[:]) {
 		return nil, nil, fmt.Errorf("failed to verify signature from %s, ed=%s sig=%s, data=%s, plain=%s", hex.EncodeToString(themXKey[:]), hex.EncodeToString(themEdKey[:]), hex.EncodeToString(sig[:]), hex.EncodeToString(body), hex.EncodeToString(plain))
 	}
-	return msg, themXKey[:], nil
+	return delPadding(msg), themXKey[:], nil
 }

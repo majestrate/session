@@ -1,6 +1,8 @@
 package swarm
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"math"
 )
 
@@ -21,8 +23,9 @@ func hexdigit(d byte) (h uint64) {
 }
 
 func pubkeyToUInt64(pk string) (res uint64) {
-	for i := 0; i < len(pk); i += 16 {
-		res ^= hexdigit(pk[i])
+	data, _ := hex.DecodeString(pk)
+	for i := 0; i < len(data); i += 8 {
+		res ^= binary.BigEndian.Uint64(data[i : i+8])
 	}
 	return
 }
@@ -31,6 +34,8 @@ func pubkeyToUInt64(pk string) (res uint64) {
 func GetSwarmForPubkey(snodes []ServiceNode, pk string) (swarm []ServiceNode) {
 	res := pubkeyToUInt64(pk)
 	id := invalidSwarmID
+	mindist := uint64(math.MaxUint64)
+
 	for _, node := range snodes {
 		dist := uint64(0)
 		if res > node.SwarmID {
@@ -38,11 +43,11 @@ func GetSwarmForPubkey(snodes []ServiceNode, pk string) (swarm []ServiceNode) {
 		} else {
 			dist = node.SwarmID - res
 		}
-		if dist < id {
-			id = dist
+		if dist < mindist {
+			mindist = dist
+			id = node.SwarmID
 		}
 	}
-
 	for _, node := range snodes {
 		if node.SwarmID == id {
 			swarm = append(swarm, node)

@@ -20,9 +20,12 @@ func (s *SnodeMap) All() (nodes []swarm.ServiceNode) {
 	return
 }
 
-func (s *SnodeMap) VisitSwarmFor(id string, visit func(swarm.ServiceNode)) {
+func (s *SnodeMap) VisitSwarmFor(id string, max int, visit func(swarm.ServiceNode)) {
 	for _, snode := range swarm.GetSwarmForPubkey(s.All(), id[2:]) {
-		visit(snode)
+		if max > 0 {
+			max--
+			visit(snode)
+		}
 	}
 }
 
