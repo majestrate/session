@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/majestrate/session/lib/client"
-	"github.com/majestrate/session/lib/config"
 	"github.com/majestrate/session/lib/cryptography"
+	"github.com/majestrate/session/lib/model"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -15,11 +16,6 @@ const keyfile = "seed.dat"
 
 func main() {
 	fmt.Println("session starting up")
-	_, err := config.Load()
-	if err != nil {
-		fmt.Printf("error loading config: %s\n", err.Error())
-		return
-	}
 
 	keys := new(cryptography.KeyPair)
 
@@ -27,7 +23,7 @@ func main() {
 		keys.Regen()
 		keys.SaveFile(keyfile)
 	}
-	err = keys.LoadFile(keyfile)
+	err := keys.LoadFile(keyfile)
 	if err != nil {
 		fmt.Printf("could not load %s: %s\n", keyfile, err.Error())
 		return
@@ -39,6 +35,23 @@ func main() {
 	}
 	store := client.SQLStore(c)
 	defer store.Close()
+
+	makeReply := func(msg *model.PlainMessage) string {
+		return msg.Body()
+	}
+	if len(os.Args) >= 2 {
+		exe := os.Args[1]
+		args := os.Args[2:]
+		makeReply = func(msg *model.PlainMessage) string {
+			cmd := exec.Command(exe, args...)
+			cmd.Env = append(os.Environ(), fmt.Sprintf("SESSION_ID=%s", msg.From), fmt.Sprintf("SESSION_MESSAGE=%s", msg.Body()))
+			data, err := cmd.Output()
+			if err != nil {
+				return err.Error()
+			}
+			return string(data)
+		}
+	}
 
 	me := client.NewClient(keys, store)
 	fmt.Printf("we are %s\n", me.SessionID())
@@ -67,7 +80,7 @@ func main() {
 				continue
 			}
 			fmt.Printf("%s | <%s> %s\n", plain.When(), plain.From, body)
-			err = me.SendTo(plain.From, fmt.Sprintf("you said: '%s'", body))
+			err = me.SendTo(plain.From, makeReply(plain))
 			if err != nil {
 				fmt.Printf("sendto failed: %s\n", err.Error())
 			}
