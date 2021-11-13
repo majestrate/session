@@ -19,5 +19,4 @@ check source code out:
 echo bot:
 
     $ go generate ./...
-    $ go get ./cmd/echobot
-    $ go build ./cmd/echobot
+    $ go build -a -v ./cmd/echobot
