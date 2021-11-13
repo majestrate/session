@@ -3,7 +3,6 @@ package client
 import (
 	"database/sql"
 	"github.com/majestrate/ubw/lib/model"
-	"strconv"
 )
 
 type sqlStore struct {
@@ -21,8 +20,7 @@ func (s *sqlStore) HasMessage(hash string) bool {
 }
 
 func (s *sqlStore) Put(msg model.Message) error {
-	t, _ := strconv.ParseInt(msg.Timestamp, 10, 64)
-	_, err := s.db.Exec("INSERT INTO messages(hash, contents, timestamp) VALUES(?,?,?)", msg.Hash, msg.Raw, t)
+	_, err := s.db.Exec("INSERT INTO messages(hash, contents) VALUES(?,?)", msg.Hash, msg.Raw)
 	return err
 }
 
@@ -41,7 +39,7 @@ func (s *sqlStore) Close() error {
 }
 
 func (s *sqlStore) migrate() error {
-	_, err := s.db.Exec("CREATE TABLE IF NOT EXISTS messages(hash BLOB PRIMARY KEY, contents BLOB NOT NULL, timestamp BIG INTEGER NOT NULL)")
+	_, err := s.db.Exec("CREATE TABLE IF NOT EXISTS messages(hash BLOB PRIMARY KEY, contents BLOB NOT NULL, timestamp DATETIME DEFAULT NOW )")
 	return err
 }
 
