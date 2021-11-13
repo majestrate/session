@@ -1,7 +1,8 @@
-# session
+# Unlimited Bot Works
 
+This repo is for archer class session bots.
 
-session bot api
+note: The Archer class really is made up of archers.
 
 ## requirements
 
@@ -9,14 +10,18 @@ session bot api
 * protoc
 * protoc-gen-go
 
-
 ## building
 
 check source code out:
 
-    $ git clone https://github.com/majestrate/session
+    $ git clone https://github.com/majestrate/ubw
     $ cd session
-echo bot:
+    
+building the bot:
 
     $ go generate ./...
-    $ go build -a -v ./cmd/echobot
+    $ go build -a -v ./cmd/archer
+
+## running
+
+    $ ./archer
