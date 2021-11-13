@@ -128,7 +128,6 @@ func decodeSNodes(snodes interface{}) (infos []*ServiceNode) {
 }
 
 func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*ServiceNode, error) {
-	fmt.Printf("store for %s at %s\n", sessionID, node.StorageURL())
 	request := map[string]interface{}{
 		"pubKey":    sessionID,
 		"ttl":       fmt.Sprintf("%d", constants.TTL),
