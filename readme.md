@@ -15,7 +15,7 @@ note: The Archer class really is made up of archers.
 check source code out:
 
     $ git clone https://github.com/majestrate/ubw
-    $ cd session
+    $ cd ubw
     
 building the bot:
 
