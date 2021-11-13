@@ -3,9 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/majestrate/session/lib/client"
-	"github.com/majestrate/session/lib/cryptography"
-	"github.com/majestrate/session/lib/model"
+	"github.com/majestrate/ubw/lib/client"
+	"github.com/majestrate/ubw/lib/cryptography"
+	"github.com/majestrate/ubw/lib/model"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"os/exec"

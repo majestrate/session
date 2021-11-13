@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/majestrate/session/lib/client"
-	"github.com/majestrate/session/lib/config"
-	"github.com/majestrate/session/lib/cryptography"
-	"github.com/majestrate/session/lib/irc"
+	"github.com/majestrate/ubw/lib/client"
+	"github.com/majestrate/ubw/lib/config"
+	"github.com/majestrate/ubw/lib/cryptography"
+	"github.com/majestrate/ubw/lib/irc"
 	"net"
 	"os"
 )

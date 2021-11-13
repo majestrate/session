@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/majestrate/session/lib/constants"
-	"github.com/majestrate/session/lib/swarm"
+	"github.com/majestrate/ubw/lib/constants"
+	"github.com/majestrate/ubw/lib/swarm"
 	"math/rand"
 	"time"
 )

@@ -8,7 +8,7 @@ import (
 	//	"golang.org/x/crypto/curve25519"
 	"crypto/ed25519"
 	"crypto/sha512"
-	"github.com/majestrate/session/lib/cryptography/edwards25519"
+	"github.com/majestrate/ubw/lib/cryptography/edwards25519"
 	"golang.org/x/crypto/nacl/box"
 	// "io"
 	"io/fs"

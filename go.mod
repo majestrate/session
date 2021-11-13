@@ -1,4 +1,4 @@
-module github.com/majestrate/session
+module github.com/majestrate/ubw
 
 go 1.16
 

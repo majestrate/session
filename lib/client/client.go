@@ -3,9 +3,9 @@ package client
 import (
 	_ "errors"
 	"fmt"
-	"github.com/majestrate/session/lib/cryptography"
-	"github.com/majestrate/session/lib/model"
-	"github.com/majestrate/session/lib/swarm"
+	"github.com/majestrate/ubw/lib/cryptography"
+	"github.com/majestrate/ubw/lib/model"
+	"github.com/majestrate/ubw/lib/swarm"
 	"time"
 )
 

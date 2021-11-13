@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/majestrate/session/lib/model"
+	"github.com/majestrate/ubw/lib/model"
 	"io"
 )
 

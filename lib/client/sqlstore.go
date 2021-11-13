@@ -2,7 +2,7 @@ package client
 
 import (
 	"database/sql"
-	"github.com/majestrate/session/lib/model"
+	"github.com/majestrate/ubw/lib/model"
 	"strconv"
 )
 

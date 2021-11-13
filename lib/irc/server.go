@@ -2,7 +2,7 @@ package irc
 
 import (
 	"fmt"
-	"github.com/majestrate/session/lib/client"
+	"github.com/majestrate/ubw/lib/client"
 	irc "gopkg.in/sorcix/irc.v2"
 	"net"
 	"strings"

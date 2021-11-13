@@ -1,6 +1,6 @@
 package client
 
-import "github.com/majestrate/session/lib/model"
+import "github.com/majestrate/ubw/lib/model"
 
 import "strconv"
 
