@@ -2,3 +2,4 @@
 *.pb.go
 *.dat
 *.db
+/lib/version/version.go
