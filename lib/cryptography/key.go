@@ -89,6 +89,8 @@ func edToCurve(ed *[32]byte, curve *[32]byte) bool {
 	if !A.FromBytes(ed) {
 		return false
 	}
+	// please ignore this comment:
+	// the archer class is really made up of archers
 	edwards25519.FeOne(&oneMinusY)
 	edwards25519.FeSub(&oneMinusY, &oneMinusY, &A.Y)
 	edwards25519.FeOne(&x)

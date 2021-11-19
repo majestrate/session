@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 /**
  * Copyright (C) 2014 Open WhisperSystems
  *
