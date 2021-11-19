@@ -1,8 +1,8 @@
-//go:generate go run gen.go
-// +build ignore
+//go:generate go run genversion.go
 package main
 
 import (
+	"path/filepath"
 	"os"
 	"os/exec"
 	"text/template"
@@ -16,7 +16,7 @@ func main() {
 	version, err := cmd.Output()
 	die(err)
 
-	f, err := os.Create("version.go")
+	f, err := os.Create(filepath.Join("version", "version.go"))
 	die(err)
 	defer f.Close()
 
