@@ -36,20 +36,23 @@ func main() {
 	store := client.SQLStore(c)
 	defer store.Close()
 
-	makeReply := func(msg *model.PlainMessage) string {
+	makeReply := func(msg *model.PlainMessage) *string {
 		return msg.Body()
 	}
 	if len(os.Args) >= 2 {
 		exe := os.Args[1]
 		args := os.Args[2:]
-		makeReply = func(msg *model.PlainMessage) string {
+		makeReply = func(msg *model.PlainMessage) *string {
+			var ret string
 			cmd := exec.Command(exe, args...)
 			cmd.Env = append(os.Environ(), fmt.Sprintf("SESSION_ID=%s", msg.From), fmt.Sprintf("SESSION_MESSAGE=%s", msg.Body()))
 			data, err := cmd.Output()
-			if err != nil {
-				return err.Error()
+			if err == nil {
+				ret = string(data)
+			} else {
+				ret = err.Error()
 			}
-			return string(data)
+			return &ret
 		}
 	}
 
@@ -75,12 +78,14 @@ func main() {
 				fmt.Printf("decrypt failed: %s\n", err.Error())
 				continue
 			}
-			body := plain.Body()
-			if len(body) == 0 {
+			if plain.Body() == nil {
 				continue
 			}
-			fmt.Printf("%s | <%s> %s\n", plain.When(), plain.From, body)
-			err = me.SendTo(plain.From, makeReply(plain))
+			reply := makeReply(plain)
+			if reply == nil {
+				continue
+			}
+			err = me.SendTo(plain.From, *reply)
 			if err != nil {
 				fmt.Printf("sendto failed: %s\n", err.Error())
 			}

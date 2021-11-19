@@ -132,7 +132,7 @@ func (node *ServiceNode) StoreMessage(sessionID string, msg model.Message) (*Ser
 		"pubKey":    sessionID,
 		"ttl":       fmt.Sprintf("%d", constants.TTL),
 		"timestamp": fmt.Sprintf("%d", utils.TimeNow()),
-		"data":      base64.StdEncoding.EncodeToString(msg.Data()),
+		"data":      base64.StdEncoding.EncodeToString(msg.Raw),
 	}
 	result, err := node.StorageAPI("store", request)
 	if err == nil {
@@ -191,7 +191,7 @@ func (node *ServiceNode) FetchMessages(sessionID string, lastHash string) ([]mod
 		hash := fmt.Sprintf("%s", m["hash"])
 		timestamp := fmt.Sprintf("%s", m["timestamp"])
 		messages = append(messages, model.Message{
-			Raw:       string(data),
+			Raw:       data,
 			Hash:      hash,
 			Timestamp: timestamp,
 		})

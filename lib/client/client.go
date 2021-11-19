@@ -96,15 +96,7 @@ func (cl *Client) SendTo(dst, body string) error {
 		return err
 	}
 	cl.snodes.VisitSwarmFor(dst, 1, func(node swarm.ServiceNode) {
-		node.StoreMessage(dst, model.Message{Raw: string(raw)})
+		node.StoreMessage(dst, model.Message{Raw: raw})
 	})
 	return nil
-}
-
-/// SendT sends a message msg to destination dest (some string)
-func (cl *Client) SendToHash(dest, msg string) {
-	dest = "05" + cryptography.B2SumHex(dest)
-	cl.snodes.VisitSwarmFor(dest, 4, func(node swarm.ServiceNode) {
-		node.StoreMessage(dest, model.Message{Raw: msg})
-	})
 }

@@ -2,66 +2,28 @@ package model
 
 import (
 	"encoding/hex"
-	"errors"
+
 	"fmt"
 	"github.com/majestrate/ubw/lib/cryptography"
 	"github.com/majestrate/ubw/lib/protobuf"
 	"google.golang.org/protobuf/proto"
-	"strings"
 	"time"
-	"unicode"
 )
 
 type Message struct {
-	Raw       string
+	Raw       []byte
 	Hash      string
 	Timestamp string
 }
 
-func (msg *Message) IRCLine() string {
-	return strings.TrimFunc(msg.Raw, func(r rune) bool {
-		if r == '\x01' || unicode.IsPrint(r) {
-			return false
-		}
-		return r == '\r' || r == '\n'
-	})
-}
-
-func (msg *Message) From() string {
-	return "anonymous"
-}
-
-func (msg *Message) Data() []byte {
-	return []byte(msg.Raw)
-}
-
-func (msg *Message) decodeEnvelope() (*protobuf.Envelope, error) {
-	env := &protobuf.Envelope{}
-	err := proto.Unmarshal([]byte(msg.Raw), env)
-	if err != nil {
-		return nil, err
-	}
-	return env, err
-}
-
 func (msg *Message) decodeRaw() ([]byte, error) {
-	env, err := msg.decodeEnvelope()
-	if err != nil {
-		return nil, err
-	}
-	if env.Source == nil {
-		return nil, errors.New("no source in envelope")
-	}
 	req := &protobuf.WebSocketRequestMessage{}
-	err = proto.Unmarshal([]byte(*env.Source), req)
+	err := proto.Unmarshal([]byte(msg.Raw), req)
 	if err != nil {
 		return nil, err
 	}
-	if req == nil {
-		return nil, errors.New("no request in envelope")
-	}
-	m := &Message{Raw: string(req.Body)}
-	env, err = m.decodeEnvelope()
+	env := &protobuf.Envelope{}
+	err = proto.Unmarshal(req.Body, env)
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +35,11 @@ type PlainMessage struct {
 	From    string
 }
 
-func (plain *PlainMessage) Body() string {
+func (plain *PlainMessage) Body() *string {
 	if plain.Message == nil || plain.Message.Body == nil {
-		return ""
+		return nil
 	}
-	return *plain.Message.Body
+	return plain.Message.Body
 }
 
 func (plain *PlainMessage) When() time.Time {
@@ -95,10 +57,8 @@ func (plain *PlainMessage) ReplyTag() []byte {
 var wsVerb = "PUT"
 var wsPath = "/api/v1/message"
 var wsID = uint64(0)
-var envSource = ""
 
 var innerEnvType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
-var outerEnvType = protobuf.Envelope_Type(1)
 
 func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
 	now := uint64(time.Now().UnixNano() / 1000000)
@@ -137,17 +97,7 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte,
 		Id:   &wsID,
 	}
 
-	reqData, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-	reqDataStr := string(reqData)
-	env := &protobuf.Envelope{
-		Type:      &outerEnvType, // because shit af protocol
-		Source:    &reqDataStr,
-		Timestamp: &now,
-	}
-	return proto.Marshal(env)
+	return proto.Marshal(req)
 }
 
 func MakePlain(data string) *PlainMessage {
