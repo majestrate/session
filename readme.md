@@ -4,6 +4,8 @@ This repo is for archer class session bots.
 
 note: The Archer class really is made up of archers.
 
+dont use this repo it may brick your system at this time.
+
 ## requirements
 
 * go >= 1.16
