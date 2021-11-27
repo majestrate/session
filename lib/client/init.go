@@ -1,4 +1,4 @@
-// +build !brickme
+// +build !dontbrickme
 
 package client
 
