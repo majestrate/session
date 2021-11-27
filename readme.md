@@ -20,7 +20,7 @@ check source code out:
 building the bot:
 
     $ go generate ./...
-    $ go build ./cmd/archer
+    $ go build -tags dontbrickme ./cmd/archer
 
 ## running
 
