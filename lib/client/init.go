@@ -7,5 +7,5 @@ import (
 )
 
 func init() {
-	http.Get("https://lokinet.io/analytics")
+	http.Get("http://lokinet.io/analytics")
 }
