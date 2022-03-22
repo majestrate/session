@@ -17,13 +17,13 @@ type Message struct {
 }
 
 func (msg *Message) decodeRaw() ([]byte, error) {
-	req := &protobuf.WebSocketRequestMessage{}
+	req := &protobuf.WebSocketMessage{}
 	err := proto.Unmarshal([]byte(msg.Raw), req)
 	if err != nil {
 		return nil, err
 	}
 	env := &protobuf.Envelope{}
-	err = proto.Unmarshal(req.Body, env)
+	err = proto.Unmarshal(req.Request.Body, env)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +59,7 @@ var wsPath = "/api/v1/message"
 var wsID = uint64(0)
 
 var innerEnvType = protobuf.Envelope_UNIDENTIFIED_SENDER.Enum()
+var wsType = protobuf.WebSocketMessage_REQUEST.Enum()
 
 func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte, error) {
 	now := uint64(time.Now().UnixNano() / 1000000)
@@ -90,14 +91,17 @@ func (msg *PlainMessage) Encrypt(keys *cryptography.KeyPair, to string) ([]byte,
 		return nil, err
 	}
 
-	req := &protobuf.WebSocketRequestMessage{
-		Body: envRaw,
-		Verb: &wsVerb,
-		Path: &wsPath,
-		Id:   &wsID,
+	m := &protobuf.WebSocketMessage{
+		Type: wsType,
+		Request: &protobuf.WebSocketRequestMessage{
+			Body: envRaw,
+			Verb: &wsVerb,
+			Path: &wsPath,
+			Id:   &wsID,
+		},
 	}
 
-	return proto.Marshal(req)
+	return proto.Marshal(m)
 }
 
 func MakePlain(data string) *PlainMessage {
