@@ -75,7 +75,10 @@ const gilgameshBanner = `UNLIMITED BOT WORKS [%s]
 const keyfile = "seed.dat"
 
 func main() {
-	fmt.Printf(gilgameshBanner, version.Version)
+
+	if os.Getenv("ANNOYING_SHITASS_BANNER") != "NO" {
+		fmt.Printf(gilgameshBanner, version.Version)
+	}
 
 	keys := new(cryptography.KeyPair)
 
